@@ -18,6 +18,7 @@ import ToastService from "../services/ToastService";
 import NotificationManager from "../lib/NotificationService";
 import { DatabaseService } from "../lib/database";
 import { useClerkAuth } from "../contexts/ClerkAuthContext";
+import MapPicker from "./MapPicker";
 
 interface ReportData {
   id: string;
@@ -47,6 +48,7 @@ const NewComplaint = () => {
   const [locationLoading, setLocationLoading] = useState(true);
   const [category, setCategory] = useState("Potholes");
   const [priority, setPriority] = useState("Medium");
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const categories = [
     "Potholes",
@@ -121,6 +123,36 @@ const NewComplaint = () => {
     } finally {
       setLocationLoading(false);
     }
+  };
+
+  const handleMapLocationSelected = (selectedLocation: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  }) => {
+    // Create a Location object from the selected coordinates
+    const newLocation: Location.LocationObject = {
+      coords: {
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+        altitude: null,
+        accuracy: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null,
+      },
+      timestamp: Date.now(),
+    };
+
+    setLocation(newLocation);
+    setAddress(selectedLocation.address || "Selected location");
+    setLocationLoading(false);
+
+    ToastService.success({
+      title: "Location Selected",
+      message: "Location has been set from map.",
+      duration: 2000,
+    });
   };
 
   const pickImage = async () => {
@@ -301,9 +333,14 @@ const NewComplaint = () => {
       };
 
       console.log("🚀 Saving report to database...");
-      console.log("📸 Photos being saved:", uploadedPhotos.map(photo => 
-        photo.startsWith('data:') ? `Base64 image (${Math.round(photo.length/1024)}KB)` : photo
-      ));
+      console.log(
+        "📸 Photos being saved:",
+        uploadedPhotos.map((photo) =>
+          photo.startsWith("data:")
+            ? `Base64 image (${Math.round(photo.length / 1024)}KB)`
+            : photo
+        )
+      );
 
       // Save to database
       const savedReport = await DatabaseService.createReport(reportData);
@@ -437,11 +474,24 @@ const NewComplaint = () => {
             ) : (
               <Text className="text-gray-600">{address}</Text>
             )}
-            <TouchableOpacity onPress={getLocation} className="mt-2">
-              <Text className="text-blue-600 font-medium">
-                📍 Update Location
-              </Text>
-            </TouchableOpacity>
+            <View className="flex-row mt-3 space-x-2">
+              <TouchableOpacity
+                onPress={getLocation}
+                className="flex-1 bg-blue-50 px-4 py-2 rounded-lg mr-2"
+              >
+                <Text className="text-blue-600 font-medium text-center">
+                  📍 Current Location
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowMapPicker(true)}
+                className="flex-1 bg-green-50 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-green-600 font-medium text-center">
+                  🗺️ Select on Map
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Category Selection */}
@@ -615,6 +665,21 @@ const NewComplaint = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Map Picker Modal */}
+      <MapPicker
+        visible={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onLocationSelected={handleMapLocationSelected}
+        initialLocation={
+          location
+            ? {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              }
+            : undefined
+        }
+      />
     </View>
   );
 };

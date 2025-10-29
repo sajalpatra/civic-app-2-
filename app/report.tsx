@@ -20,6 +20,7 @@ import { useClerkAuth } from "../contexts/ClerkAuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import ToastService from "../services/ToastService";
 import { DatabaseService } from "../lib/database";
+import MapPicker from "./MapPicker";
 
 interface ReportData {
   id: string;
@@ -48,6 +49,7 @@ const ReportScreen = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [recording, setRecording] = useState<any>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationLoading, setLocationLoading] = useState(true);
@@ -131,6 +133,36 @@ const ReportScreen = () => {
     } finally {
       setLocationLoading(false);
     }
+  };
+
+  const handleMapLocationSelected = (selectedLocation: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  }) => {
+    // Create a Location object from the selected coordinates
+    const newLocation: Location.LocationObject = {
+      coords: {
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+        altitude: null,
+        accuracy: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null,
+      },
+      timestamp: Date.now(),
+    };
+
+    setLocation(newLocation);
+    setAddress(selectedLocation.address || "Selected location");
+    setLocationLoading(false);
+
+    ToastService.success({
+      title: "Location Selected",
+      message: "Location has been set from map.",
+      duration: 2000,
+    });
   };
 
   const pickImage = async () => {
@@ -443,17 +475,7 @@ const ReportScreen = () => {
               </TouchableOpacity>
               {location && (
                 <TouchableOpacity
-                  onPress={() => {
-                    // Pass location data to map screen
-                    router.push({
-                      pathname: "./map",
-                      params: {
-                        latitude: location.coords.latitude,
-                        longitude: location.coords.longitude,
-                        address: address,
-                      },
-                    });
-                  }}
+                  onPress={() => setShowMapPicker(true)}
                   className="bg-green-600 px-4 py-2 rounded-lg mb-3 flex-row items-center"
                 >
                   <AppIcon icon="map" size={16} color="white" />
@@ -696,6 +718,21 @@ const ReportScreen = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Map Picker Modal */}
+      <MapPicker
+        visible={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onLocationSelected={handleMapLocationSelected}
+        initialLocation={
+          location
+            ? {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              }
+            : undefined
+        }
+      />
     </SafeAreaView>
   );
 };
