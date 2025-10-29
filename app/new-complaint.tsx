@@ -223,21 +223,10 @@ const NewComplaint = () => {
     try {
       console.log("📷 Converting image to base64:", uri);
 
-      // Check if file exists
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (!fileInfo.exists) {
-        throw new Error("File does not exist");
-      }
-      console.log("📁 File exists, size:", fileInfo.size, "bytes");
-
       // Read the image file as base64
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-
-      if (!base64 || base64.length === 0) {
-        throw new Error("Failed to read file as base64");
-      }
 
       // Create data URI with proper MIME type
       const mimeType = uri.toLowerCase().includes(".png")
@@ -255,10 +244,7 @@ const NewComplaint = () => {
       return dataUri;
     } catch (error) {
       console.error("❌ Error converting image to base64:", error);
-      console.error("❌ Original URI:", uri);
-      // Return original URI as fallback instead of throwing
-      console.warn("⚠️ Falling back to original URI");
-      return uri;
+      throw new Error("Failed to process image");
     }
   };
 
@@ -283,19 +269,9 @@ const NewComplaint = () => {
 
       // Upload photos securely
       const uploadedPhotos = [];
-      console.log("🔄 Processing photos for upload:", photos.length, "photos");
-      for (let i = 0; i < photos.length; i++) {
-        const photo = photos[i];
-        console.log(`📷 Processing photo ${i + 1}/${photos.length}:`, photo);
-        try {
-          const secureUrl = await uploadToSecureStorage(photo);
-          console.log(`✅ Photo ${i + 1} converted:`, secureUrl.startsWith('data:') ? `Base64 (${Math.round(secureUrl.length/1024)}KB)` : secureUrl);
-          uploadedPhotos.push(secureUrl);
-        } catch (error) {
-          console.error(`❌ Error processing photo ${i + 1}:`, error);
-          // Fallback to original URI if conversion fails
-          uploadedPhotos.push(photo);
-        }
+      for (const photo of photos) {
+        const secureUrl = await uploadToSecureStorage(photo);
+        uploadedPhotos.push(secureUrl);
       }
 
       // Convert audio to base64 if exists
